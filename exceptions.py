@@ -21,7 +21,7 @@ class RequestError(Exception):
         super().__init__(self.message)
 
 
-class SendMessageFailureError(Exception):
+class SendMessageError(Exception):
     """Исключение возникает при ошибках при отправке сообщений в Telegram."""
     def __init__(self):
         self.message = 'Не удалось отпрвить сообщение в Telegram.'

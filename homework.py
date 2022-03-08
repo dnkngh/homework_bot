@@ -10,7 +10,7 @@ from telegram import Bot
 
 from exceptions import (
     MissingTokenError, EndpointUnavailableError, RequestError,
-    SendMessageFailureError, WrongStatusError, EmptyResponseError
+    SendMessageError, WrongStatusError, EmptyResponseError
 )
 
 
@@ -43,7 +43,7 @@ def send_message(bot, message):
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info('Сообщение в Telegram успешно отправлено')
     except Exception:
-        logger.error(SendMessageFailureError())
+        logger.error(SendMessageError())
 
 
 def raise_and_log_error(exception):
@@ -54,9 +54,11 @@ def raise_and_log_error(exception):
 
 def get_api_answer(current_timestamp):
     """
-    Запрос к API Yandex Practicum с указанной временной меткой. В случае
-    успешного запроса возвращает ответ API, приведенный к типам данных Python.
+    Запрос к `API Yandex Practicum` с указанной временной меткой.
+    В случае успешного запроса возвращает ответ API, приведенный к типам
+    данных Python.
     """
+
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
     params = {'from_date': current_timestamp}
     homework_statuses = requests.get(ENDPOINT, headers=headers, params=params)
@@ -117,7 +119,8 @@ def check_tokens():
 
 def get_timestamp(report) -> int:
     """Функция в качестве параметра получает работу и возвращяет время
-    последнегоизменения статуса этой работы в формате Unix time."""
+    последнегоизменения статуса этой работы в формате Unix time.
+    """
     report_update_date = report.get('date_updated')
     report_update_datetime = datetime.strptime(
         report_update_date, '%Y-%m-%dT%H:%M:%SZ'
@@ -128,7 +131,8 @@ def get_timestamp(report) -> int:
 
 def main():
     """При запуске бот запрашивает работы за все время. Последующие запросы
-    отправляются с `timestamp`, равным `date_updated` последней работы."""
+    отправляются с `timestamp`, равным `date_updated` последней работы.
+    """
     check_tokens()
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = 0
