@@ -53,8 +53,7 @@ def raise_and_log_error(exception):
 
 
 def get_api_answer(current_timestamp):
-    """
-    Запрос к `API Yandex Practicum` с указанной временной меткой. В случае
+    """Запрос к `API Yandex Practicum` с указанной временной меткой. В случае
     успешного запроса возвращает ответ API, приведенный к типам данных Python.
     """
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
@@ -70,8 +69,7 @@ def get_api_answer(current_timestamp):
 def check_response(response):
     """
     Проверка ответа API на корректность. При успешной проверке возвращает
-    список домашних работ, доступный в ответе по ключу `homeworks`.
-    """
+    список домашних работ, доступный в ответе по ключу `homeworks`."""
     if not isinstance(response, dict):
         raise_and_log_error(TypeError(
             'Ответ сервиса не является словарем'
@@ -92,10 +90,8 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """
-    Функция извлекает статус работы из ответа Яндекс.Практикум и возвращает
-    готовую строку для отправки пользователю.
-    """
+    """Функция извлекает статус работы из ответа Яндекс.Практикум и возвращает
+    готовую строку для отправки пользователю."""
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
     if not (homework_status and homework_name):
@@ -117,10 +113,8 @@ def check_tokens():
 
 
 def get_timestamp(report) -> int:
-    """
-    Функция в качестве параметра получает работу и возвращяет время последнего
-    изменения статуса этой работы в формате Unix time.
-    """
+    """Функция в качестве параметра получает работу и возвращяет время
+    последнегоизменения статуса этой работы в формате Unix time."""
     report_update_date = report.get('date_updated')
     report_update_datetime = datetime.strptime(
         report_update_date, '%Y-%m-%dT%H:%M:%SZ'
@@ -130,10 +124,8 @@ def get_timestamp(report) -> int:
 
 
 def main():
-    """
-    При запуске бот запрашивает работы за все время. Последующие запросы
-    отправляются с `timestamp`, равным `date_updated` последней работы.
-    """
+    """При запуске бот запрашивает работы за все время. Последующие запросы
+    отправляются с `timestamp`, равным `date_updated` последней работы."""
     check_tokens()
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = 0
