@@ -53,12 +53,11 @@ def raise_and_log_error(exception):
 
 
 def get_api_answer(current_timestamp):
-    """
+    """.
     Запрос к `API Yandex Practicum` с указанной временной меткой.
     В случае успешного запроса возвращает ответ API, приведенный к типам
     данных Python.
     """
-
     headers = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
     params = {'from_date': current_timestamp}
     homework_statuses = requests.get(ENDPOINT, headers=headers, params=params)
