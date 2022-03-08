@@ -8,7 +8,10 @@ import requests
 from dotenv import load_dotenv
 from telegram import Bot
 
-from exceptions import *
+from exceptions import (
+    MissingTokenError, EndpointUnavailableError, RequestError,
+    SendMessageFailureError, WrongStatusError, EmptyResponseError
+)
 
 
 load_dotenv()
@@ -106,9 +109,7 @@ def parse_status(homework):
 
 
 def check_tokens():
-    """
-    Проверка доступности необходимых переменных окружения.
-    """
+    """Проверка доступности необходимых переменных окружения."""
     tokens_exist = PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID
     if tokens_exist:
         return tokens_exist
@@ -130,8 +131,8 @@ def get_timestamp(report) -> int:
 
 def main():
     """
-    При запуске бот запрашивает работы за все время. Последующие запросы отправляются
-    с `timestamp`, равным `date_updated` последней работы.
+    При запуске бот запрашивает работы за все время. Последующие запросы
+    отправляются с `timestamp`, равным `date_updated` последней работы.
     """
     check_tokens()
     bot = Bot(token=TELEGRAM_TOKEN)
