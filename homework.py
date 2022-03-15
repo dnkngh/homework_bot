@@ -1,18 +1,17 @@
-from datetime import datetime
-from http import HTTPStatus
 import logging
 import os
-import requests
 import sys
 import time
+from datetime import datetime
+from http import HTTPStatus
 
+import requests
 from dotenv import load_dotenv
 from telegram import Bot
 
 from exceptions import (
-    MissingTokenError, ResponseError, EndpointUnavailableError, RequestError,
-    SendMessageError, WrongStatusError
-)
+    EndpointUnavailableError, HomeworkServiceError, MissingTokenError,
+    ResponseError, RequestError, SendMessageError, WrongStatusError, )
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +21,12 @@ PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 RETRY_TIME = 600
-ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
+ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/aa'
 
 APPROVED = 'approved'
 REVIEWVING = 'reviewing'
 REJECTED = 'rejected'
-UPDATE_MESSAGES = {
+TELEGRAM_MESSAGES = {
     APPROVED: 'Работа проверена: ревьюеру всё понравилось. Ура!',
     REVIEWVING: 'Работа взята на проверку ревьюером.',
     REJECTED: 'Работа проверена: у ревьюера есть замечания.'
@@ -41,9 +40,6 @@ def send_message(bot, message):
         bot.send_message(TELEGRAM_CHAT_ID, message)
         logger.info('Сообщение в Telegram успешно отправлено.')
     except Exception:
-        logger.error(SendMessageError(
-            'Не удалось отправить сообщение в Telegram.'
-        ))
         raise SendMessageError('Не удалось отправить сообщение в Telegram.')
 
 
@@ -61,33 +57,24 @@ def get_api_answer(current_timestamp):
             headers=headers,
             params=params
         )
-    except Exception as error:
-        logging.error(
-            f'Сбой при запросе к сервису Практикум.Домашка: {error}.'
-        )
+
+        if homework_statuses.status_code == HTTPStatus.NOT_FOUND:
+            raise EndpointUnavailableError(
+                'Эндпоинт Практикум.Домашка недоступен. Код ответа: 404.'
+            )
+
+        if homework_statuses.status_code != HTTPStatus.OK:
+            raise ResponseError(
+                f'При запросе к сервису Практикум.Домашка возникла ошибка.'
+                f'Код ответа: {homework_statuses.status_code}.'
+            )
+
+        return homework_statuses.json()
+
+    except requests.exceptions.RequestException as error:
         raise RequestError(
             f'Сбой при запросе к сервису Практикум.Домашка: {error}.'
         )
-
-    if homework_statuses.status_code == HTTPStatus.NOT_FOUND:
-        logging.error(EndpointUnavailableError(
-            'Эндпоинт Практикум.Домашка недоступен. Код ответа: 404).'
-        ))
-        raise EndpointUnavailableError(
-            'Эндпоинт Практикум.Домашка недоступен. Код ответа: 404).'
-        )
-
-    if homework_statuses.status_code != HTTPStatus.OK:
-        logging.error(
-            f'При запросе к сервису Практикум.Домашка возникла ошибка.'
-            f'Код ответа: {homework_statuses.status_code}.'
-        )
-        raise ResponseError(
-            f'При запросе к сервису Практикум.Домашка возникла ошибка.'
-            f'Код ответа: {homework_statuses.status_code}.'
-        )
-
-    return homework_statuses.json()
 
 
 def check_response(response):
@@ -96,34 +83,24 @@ def check_response(response):
     список домашних работ, доступный в ответе по ключу `homeworks`.
     """
     if not isinstance(response, dict):
-        logger.error(
-            f'Ответ сервиса не является словарем. Ответ сервиса: {response}'
-        )
         raise TypeError(
             f'Ответ сервиса не является словарем. Ответ сервиса {response}.'
         )
 
     if not response.get('current_date'):
-        logger.error('В полученном ответе отсутствует ключ `current_date`.')
         raise KeyError('В полученном ответе отсутствует ключ `current_date`.')
 
     if not response.get('homeworks'):
-        logger.error('В полученном ответе отсутствует ключ `homeworks`.')
         raise KeyError('В полученном ответе отсутствует ключ `homeworks`.')
 
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
-        logger.error(
-            f'Значение по ключу `homeworks` не является списком.'
-            f'Ответ сервиса: {homeworks}'
-        )
         raise TypeError(
             f'Значение по ключу `homeworks` не является списком.'
             f'Ответ сервиса: {homeworks}'
         )
 
     if not homeworks:
-        logger.error('Значение по ключу `homeworks` - пустой список.')
         raise IndexError('Значение по ключу `homeworks` - пустой список.')
 
     return homeworks
@@ -138,18 +115,14 @@ def parse_status(homework):
     homework_status = homework.get('status')
 
     if not (homework_status and homework_name):
-        logger.error(
-            'В ответе отсутствуют ключи `homework_name` и/или `status`'
-        )
         raise KeyError(
             'В ответе отсутствуют ключи `homework_name` и/или `status`'
         )
 
-    if homework_status not in UPDATE_MESSAGES:
-        logger.error(WrongStatusError('Получен некорректный статус работы.'))
+    if homework_status not in TELEGRAM_MESSAGES:
         raise WrongStatusError('Получен некорректный статус работы.')
 
-    verdict = UPDATE_MESSAGES.get(homework_status)
+    verdict = TELEGRAM_MESSAGES.get(homework_status)
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
@@ -158,9 +131,6 @@ def check_tokens():
     tokens_exist = PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID
     if tokens_exist:
         return tokens_exist
-    logger.critical(MissingTokenError(
-        'Отсутствуют необходимые переменные окружения'
-    ))
     return False
 
 
@@ -182,7 +152,9 @@ def main():
     При запуске бот запрашивает работы за все время. Последующие запросы
     отправляются с `timestamp`, равным `date_updated` последней работы.
     """
-    check_tokens()
+    if not check_tokens():
+        logger.critical(MissingTokenError('Отсутствуют переменные окружения'))
+        sys.exit('Отсутствуют переменные окружения')
     bot = Bot(token=TELEGRAM_TOKEN)
     current_timestamp = 0
     previous_report = {}
@@ -199,11 +171,14 @@ def main():
                 current_timestamp = get_timestamp(current_report)
             else:
                 logger.debug('Статус работы не изменился.')
-        except Exception as error:
+        except HomeworkServiceError as error:
+            logger.error(error)
             message = f'Сбой в работе программы: {error}'
             if message != previous_message:
                 send_message(bot, message)
                 previous_message = message
+        except SendMessageError as error:
+            logger.error(error)
         finally:
             time.sleep(RETRY_TIME)
 
