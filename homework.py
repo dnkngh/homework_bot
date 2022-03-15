@@ -11,7 +11,8 @@ from telegram import Bot
 
 from exceptions import (
     EndpointUnavailableError, HomeworkServiceError, MissingTokenError,
-    ResponseError, RequestError, SendMessageError, WrongStatusError, )
+    ResponseError, RequestError, SendMessageError, WrongStatusError
+)
 
 logger = logging.getLogger(__name__)
 
